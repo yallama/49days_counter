@@ -6,6 +6,9 @@ window.MockApi = (function(){
   const FAKE_NOW = tp(9,19,20,15);                                 // 固定為第 2 天晚上
   const loadedAt = Date.now();
   const now = () => FAKE_NOW + (Date.now() - loadedAt);
+  const TZP = 8*3600e3, DAYMS = 86400e3;
+  const dayNoOf = t => Math.floor((t+TZP)/DAYMS) - Math.floor((START+TZP)/DAYMS) + 1;
+  const dayMidTs = day => (Math.floor((START+TZP)/DAYMS)+day-1)*DAYMS - TZP + 12*3600e3;
 
   const records = [
     [tp(9,18,5,2),"大悲咒",3],[tp(9,18,7,30),"往生咒",108],[tp(9,18,12,15),"金剛經",1],
@@ -32,7 +35,13 @@ window.MockApi = (function(){
     if(action==="bootstrap") return snapshot();
     if(action==="add"){
       let r = p.clientId && records.find(x=>x.clientId===p.clientId);
-      if(!r){ r = {id:"n"+Date.now(), clientId:p.clientId, t:now(), item:p.item, n:p.count, active:true}; records.push(r); }
+      if(!r){
+        const today = dayNoOf(now());
+        const d = p.day!=null && p.day!=="" ? Number(p.day) : today;
+        const t = (Number.isInteger(d) && d>=1 && d<=today && d!==today) ? dayMidTs(d) : now();
+        r = {id:"n"+Date.now(), clientId:p.clientId, t, item:p.item, n:p.count, active:true};
+        records.push(r);
+      }
       return {record:{id:r.id, t:r.t, item:r.item, n:r.n}, state:snapshot()};
     }
     if(action==="undo"){

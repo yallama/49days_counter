@@ -53,3 +53,9 @@ function dayNo_(t, cfg) {
 function maxCountFor_(item) {
   return BUDDHAS.indexOf(item) >= 0 ? MAX_COUNT_BUDDHA : MAX_COUNT_SUTRA;
 }
+
+/** 補登功課用：某天（台北日曆日）中午的時間戳，dayNo_() 對它算出來一定是 day */
+function dayMidTs_(day, cfg) {
+  const idx0 = Math.floor((cfg.periodStart + TZ_OFFSET_MS) / DAY_MS);
+  return (idx0 + day - 1) * DAY_MS - TZ_OFFSET_MS + 12 * 3600 * 1000;
+}

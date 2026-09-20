@@ -99,6 +99,12 @@ button{cursor:pointer}
 .err{color:var(--warn);font-size:15px;min-height:1.3em}
 .tag{display:inline-block;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--ink-2);border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-right:6px;vertical-align:2px}
 
+.day-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.day-current{font-size:17px;font-weight:700}
+.day-current .tag{margin-right:0;margin-left:8px;color:var(--gold);border-color:var(--gold-soft);background:var(--gold-soft)}
+.day-toggle{flex:none;min-height:40px;padding:0 12px;border-radius:10px;border:2px solid var(--accent-line);background:var(--surface);color:var(--accent);font-size:15px;font-weight:700}
+.day-picker{margin-top:10px}
+
 /* record bar */
 .recordbar{position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:5;pointer-events:none}
 .recordbar-inner{max-width:430px;margin:0 auto;padding:10px 16px;pointer-events:auto;background:linear-gradient(to top,var(--ground) 70%,transparent)}
@@ -271,6 +277,7 @@ button.day{cursor:pointer}
     phase:"loading", error:null,                                  // loading | ready | error
     tab:"record",
     item:null, count:null, custom:false, customText:"",
+    day:null, dayPickerOpen:false,
     period:null, records:[], family:null,
     last:null, newIds:new Set(), selDay:null,
     busy:false, pending:null, lastSync:0
@@ -439,17 +446,31 @@ button.day{cursor:pointer}
         <div class="total" id="tot-family"><div class="total-label">家族本期累積</div>
           <div class="total-value num">${fmt(sum(t.family))}<span class="u">遍</span></div></div>
       </div>
+      <section class="step" aria-labelledby="h-day">
+        <h2 id="h-day"><span class="n">1</span>選擇日期</h2>
+        ${dayPickerHTML()}
+      </section>
       <section class="step" aria-labelledby="h-item">
-        <h2 id="h-item"><span class="n">1</span>選擇剛剛唸的項目</h2>
+        <h2 id="h-item"><span class="n">2</span>選擇剛剛唸的項目</h2>
         <p class="group-label">經咒</p>
         <div class="items">${SUTRAS.map(i=>itemBtn(i)).join("")}</div>
         <p class="group-label">佛號</p>
         <div class="items one">${BUDDHAS.map(i=>itemBtn(i,"long")).join("")}</div>
       </section>
       <section class="step" aria-labelledby="h-count">
-        <h2 id="h-count"><span class="n">2</span>選擇遍數${isBuddha()?'<span class="hint">佛號常用數量</span>':state.item==="往生咒"?'<span class="hint">已預選 108 遍</span>':''}</h2>
+        <h2 id="h-count"><span class="n">3</span>選擇遍數${isBuddha()?'<span class="hint">佛號常用數量</span>':state.item==="往生咒"?'<span class="hint">已預選 108 遍</span>':''}</h2>
         ${countsHTML()}
       </section>`;
+  }
+  function dayPickerHTML(){
+    const today = dayNo(now()), sel = state.day==null ? today : state.day, backfill = sel!==today;
+    const label = backfill ? `第 ${sel} 天 ${fmtDayOnly(sel)}` : `今天（第 ${today} 天）`;
+    const doneDays = new Set(state.records.map(r=>dayNo(r.t)));
+    return `<div class="day-row">
+        <span class="day-current">${label}${backfill?'<span class="tag">補登</span>':""}</span>
+        <button type="button" class="day-toggle" id="btn-day-toggle">${state.dayPickerOpen?"收起":"補登其他天"}</button>
+      </div>
+      ${state.dayPickerOpen ? `<div class="cal day-picker">${calendarGrid(state.period.days, today, sel, "rd", doneDays, "rec-day")}</div>` : ""}`;
   }
   function countsHTML(){
     if(!state.item) return `<div class="empty">請先選擇上面的項目</div>`;
@@ -472,26 +493,35 @@ button.day{cursor:pointer}
     const list = ITEMS.filter(i=>o[i]>0);
     return list.length ? `<div class="chips">${list.map(i=>`<span class="chip">${i} <b>${fmt(o[i])}</b></span>`).join("")}</div>` : "";
   }
-  function renderMerit(){
-    const t = totals(), D = state.period.days, today = dayNo(now());
-    const lastPast = Math.max(0, Math.min(today, D));                  // 已經過的天數
-    const doneDays = new Set(state.records.map(r=>dayNo(r.t)));
-    if(state.selDay===null && lastPast>0) state.selDay = lastPast;
-
+  // 共用日曆格子：D=共修天數，today=今天第幾天，selected=目前選取的天，idPrefix=按鈕 id 前綴
+  function calendarGrid(D, today, selected, idPrefix, doneDays, extraCls){
     let cal = "";
     for(let w=0; w<Math.ceil(D/7); w++){
       cal += `<span class="wk">${wkLabel(w)}</span>`;
       for(let d=0; d<7 && w*7+d<D; d++){
         const n = w*7+d+1, dt = new Date(dateOfDay(n));
         const md = dt.getUTCDate()===1 || n===1 ? `${dt.getUTCMonth()+1}/${dt.getUTCDate()}` : dt.getUTCDate();
-        const cls = ["day"]; if(doneDays.has(n)) cls.push("done"); if(n>today) cls.push("future"); if(n===today) cls.push("today");
-        const status = n>today ? "尚未到" : doneDays.has(n) ? "有做功課" : "沒有紀錄";
+        const future = n>today;
+        const cls = ["day"]; if(extraCls) cls.push(extraCls);
+        if(doneDays && doneDays.has(n)) cls.push("done");
+        if(future) cls.push("future");
+        if(n===today) cls.push("today");
+        const status = future ? "尚未到" : (doneDays && doneDays.has(n)) ? "有做功課" : "沒有紀錄";
         const aria = `第 ${n} 天 ${fmtDayOnly(n)}，${status}${n===today?"，今天":""}`;
-        cal += n>today
+        cal += future
           ? `<span class="${cls.join(" ")}" aria-label="${aria}">${md}</span>`
-          : `<button type="button" class="${cls.join(" ")}" id="day-${n}" data-day="${n}" aria-pressed="${state.selDay===n}" aria-label="${aria}">${md}</button>`;
+          : `<button type="button" class="${cls.join(" ")}" id="${idPrefix}-${n}" data-day="${n}" aria-pressed="${selected===n}" aria-label="${aria}">${md}</button>`;
       }
     }
+    return cal;
+  }
+  function renderMerit(){
+    const t = totals(), D = state.period.days, today = dayNo(now());
+    const lastPast = Math.max(0, Math.min(today, D));                  // 已經過的天數
+    const doneDays = new Set(state.records.map(r=>dayNo(r.t)));
+    if(state.selDay===null && lastPast>0) state.selDay = lastPast;
+
+    const cal = calendarGrid(D, today, state.selDay, "day", doneDays);
     const hit = [...doneDays].filter(n=>n>=1 && n<=lastPast).length;
     const sel = state.selDay;
     let detail = "<strong>共修尚未開始</strong>";
@@ -563,8 +593,10 @@ button.day{cursor:pointer}
     if(!show) return;
     const open = inPeriod(), n = validCount(), ready = open && state.item && n;
     $("btn-record").disabled = !ready;
+    const today = dayNo(now()), backfill = state.day!=null && state.day!==today;
+    const prefix = backfill ? `補登第 ${state.day} 天：` : "本次：";
     $("summary").innerHTML = !open ? "共修期間外，暫停記錄"
-      : ready ? `本次：<strong>${state.item} ${fmt(n)} 遍</strong>`
+      : ready ? `${prefix}<strong>${state.item} ${fmt(n)} 遍</strong>`
       : !state.item ? "請選擇項目與遍數" : "請選擇遍數";
   }
 
@@ -596,6 +628,13 @@ button.day{cursor:pointer}
       if(c.dataset.count==="custom"){ state.custom=true; state.count=null; render(); $("custom-input").focus(); }
       else { state.custom=false; state.count=+c.dataset.count; render(); $(c.id).focus(); }
       return;
+    }
+    const dt = e.target.closest("#btn-day-toggle");
+    if(dt){ state.dayPickerOpen = !state.dayPickerOpen; render(); return; }
+    const rd = e.target.closest(".rec-day");
+    if(rd){
+      state.day = +rd.dataset.day; state.dayPickerOpen = false;
+      render(); const tgl=$("btn-day-toggle"); tgl && tgl.focus(); return;
     }
     const d = e.target.closest("button.day");
     if(d){ state.selDay = +d.dataset.day; render(); $(d.id).focus(); }
@@ -635,6 +674,7 @@ button.day{cursor:pointer}
 
   document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
     state.tab=b.dataset.tab; state.selDay=null;
+    state.day=null; state.dayPickerOpen=false;
     if(state.tab!=="mine") state.newIds.clear();
     render(); window.scrollTo(0,0);
   }));
@@ -643,7 +683,10 @@ button.day{cursor:pointer}
   $("btn-record").addEventListener("click",()=>{
     const n = validCount(); if(!state.item || !n || !inPeriod()) return;
     $("dlg-what").innerHTML = `${state.item}<br><span class="num">${fmt(n)}</span><span class="u"> 遍</span>`;
-    $("dlg-when").textContent = "記錄時間 " + fmtTime(now());
+    const today = dayNo(now());
+    $("dlg-when").textContent = (state.day!=null && state.day!==today)
+      ? `補登：第 ${state.day} 天 ${fmtDayOnly(state.day)}`
+      : "記錄時間 " + fmtTime(now());
     lastFocus = document.activeElement;
     $("modal").hidden = false; $("dlg-ok").focus();
   });
@@ -660,20 +703,24 @@ button.day{cursor:pointer}
   $("dlg-ok").addEventListener("click", async ()=>{
     if(state.busy) return;
     const item = state.item, n = validCount(); if(!item || !n) return;
+    const today = dayNo(now());
+    const day = (state.day!=null && state.day!==today) ? state.day : undefined;
     // 同一個選擇重送時沿用同一個 clientId，後端就不會重複記錄
-    const key = item+"|"+n;
+    const key = item+"|"+n+"|"+(day||"today");
     if(!state.pending || state.pending.key!==key) state.pending = {key, clientId:uid()};
     setDialogBusy(true);
     try{
-      const res = await api("add", {item, count:n, clientId:state.pending.clientId});
+      const res = await api("add", {item, count:n, clientId:state.pending.clientId, day});
       state.pending = null;
       applyState(res.state);
       const rec = res.record;
       state.last = rec; state.newIds.add(rec.id);
       state.item=null; state.count=null; state.custom=false; state.customText="";
+      state.day=null; state.dayPickerOpen=false;
       setDialogBusy(false); $("modal").hidden = true;
       render(); flashTotals();
-      showToast(`<strong>已記錄 ✓</strong>${rec.item} ${fmt(rec.n)} 遍，功德已加入累積`, "ok");
+      const canUndoNow = (now()-rec.t) < UNDO_WINDOW_MS;   // 補登過去日期的紀錄無法立即撤銷
+      showToast(`<strong>已記錄 ✓</strong>${rec.item} ${fmt(rec.n)} 遍，功德已加入累積`, "ok", canUndoNow);
       $("btn-record").focus();
     }catch(e){
       const err = normErr(e);

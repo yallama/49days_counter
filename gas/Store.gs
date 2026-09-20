@@ -89,9 +89,18 @@ function addRecord_(user, cfg, body) {
   const clientId = raw ? 'c_' + raw : '';  // 加前綴，避免試算表把它當數字
 
   const now = Date.now();
-  const day = dayNo_(now, cfg);
   if (now < cfg.periodStart) throw new AppError('NOT_STARTED', '共修尚未開始');
-  if (day > cfg.periodDays) throw new AppError('ENDED', '共修已圓滿，無法再新增紀錄');
+  const today = dayNo_(now, cfg);
+  if (today > cfg.periodDays) throw new AppError('ENDED', '共修已圓滿，無法再新增紀錄');
+
+  // 補登：可指定過去（含今天）的某一天，時間戳改用該天中午
+  let day = today, t = now;
+  if (body.day !== undefined && body.day !== null && body.day !== '') {
+    const d = Number(body.day);
+    if (!Number.isInteger(d) || d < 1 || d > today) throw new AppError('BAD_REQUEST', '補登日期不正確');
+    day = d;
+    if (day !== today) t = dayMidTs_(day, cfg);
+  }
 
   return withLock_(() => {
     const records = readRecords_(cfg);
@@ -99,10 +108,10 @@ function addRecord_(user, cfg, body) {
     let rec = clientId && records.find(r => r.clientId === clientId && r.userId === user.userId);
     if (!rec) {
       const id = 'r_' + Utilities.getUuid();
-      recordsSheet_(cfg).appendRow([id, clientId, new Date(now), user.userId,
+      recordsSheet_(cfg).appendRow([id, clientId, new Date(t), user.userId,
         safeText_(user.displayName), item, count, day, 'active', '']);
       SpreadsheetApp.flush();
-      rec = { id: id, clientId: clientId, t: now, userId: user.userId, item: item, n: count, status: 'active' };
+      rec = { id: id, clientId: clientId, t: t, userId: user.userId, item: item, n: count, status: 'active' };
       records.push(rec);
     }
     return { record: { id: rec.id, t: rec.t, item: rec.item, n: rec.n }, state: buildState_(user, cfg, records) };
