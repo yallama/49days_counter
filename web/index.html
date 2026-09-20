@@ -132,6 +132,9 @@ button{cursor:pointer}
 .rec-time{font-size:15px;color:var(--ink-3);display:block;font-variant-numeric:tabular-nums}
 .rec-name{font-weight:700}
 .rec-new{font-size:13px;font-weight:700;background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+.rec-actions{display:flex;align-items:center;gap:8px}
+.rec-undo{flex:none;min-height:36px;padding:0 10px;border-radius:10px;border:2px solid var(--line);background:var(--surface);color:var(--ink-2);font-size:14px;font-weight:700}
+.rec-undo:disabled{opacity:.6;cursor:progress}
 .foot-note{font-size:14px;color:var(--ink-3);text-align:center;margin:0}
 
 /* practice calendar */
@@ -259,6 +262,7 @@ button.day{cursor:pointer}
   const label = i => BUDDHAS.includes(i) ? `<small class="tag">佛號</small>${i}` : i;
 
   const HOUR = 3600e3, DAY = 86400e3, TP = 8*HOUR;               // 一律以台北時間計日
+  const UNDO_WINDOW_MS = 15*60e3;                                // 需與後端 gas/Config.gs 的 UNDO_WINDOW_MS 一致
   const WEEK = "日一二三四五六";
   const WEEKS = ["一七","二七","三七","四七","五七","六七","七七"];
   const wkLabel = w => WEEKS[w] || `${w+1}週`;
@@ -531,9 +535,15 @@ button.day{cursor:pointer}
     const t = totals();
     const all = state.records.slice().sort((a,b)=>b.t-a.t), recent = all.slice(0,10);
     const list = recent.length
-      ? recent.map(r=>`<li><div><span class="rec-name">${label(r.item)}</span>${state.newIds.has(r.id)?'<span class="rec-new">剛剛</span>':""}
+      ? recent.map(r=>{
+          const canUndo = (now()-r.t) < UNDO_WINDOW_MS;
+          return `<li><div><span class="rec-name">${label(r.item)}</span>${state.newIds.has(r.id)?'<span class="rec-new">剛剛</span>':""}
         <span class="rec-time">${fmtTime(r.t)}</span></div>
-        <div class="val num">${fmt(r.n)}<span class="u">遍</span></div></li>`).join("")
+        <div class="rec-actions">
+          <div class="val num">${fmt(r.n)}<span class="u">遍</span></div>
+          ${canUndo ? `<button type="button" class="rec-undo" data-id="${r.id}">撤銷</button>` : ""}
+        </div></li>`;
+        }).join("")
       : `<li><span class="rec-time">還沒有紀錄，到「紀錄功課」記下第一筆吧</span></li>`;
     $("view").innerHTML = `<section class="panel">
       <h2 class="title">我的紀錄</h2>
@@ -570,7 +580,7 @@ button.day{cursor:pointer}
   }
 
   /* ---------- events ---------- */
-  $("view").addEventListener("click", e=>{
+  $("view").addEventListener("click", async e=>{
     const retry = e.target.closest("#btn-retry");
     if(retry){ retry.dataset.auth==="true" ? relogin() : boot(); return; }
     const it = e.target.closest(".item");
@@ -589,6 +599,30 @@ button.day{cursor:pointer}
     }
     const d = e.target.closest("button.day");
     if(d){ state.selDay = +d.dataset.day; render(); $(d.id).focus(); }
+    const ru = e.target.closest(".rec-undo");
+    if(ru){
+      if(state.busy) return;
+      const id = ru.dataset.id, rec = state.records.find(r=>r.id===id);
+      if(!rec) return;
+      state.busy = true; ru.disabled = true; ru.textContent = "撤銷中…";
+      try{
+        const res = await api("undo", {id});
+        applyState(res.state);
+        if(state.last && state.last.id===id) state.last = null;
+        state.newIds.delete(id);
+        render(); flashTotals();
+        showToast(`<strong>已撤銷</strong>「${rec.item} ${fmt(rec.n)} 遍」已取消`, "info");
+      }catch(err){
+        const e2 = normErr(err);
+        if(e2.code==="UNAUTHORIZED" || e2.code==="FORBIDDEN") return fatal(e2);
+        state.busy = false;
+        showToast(`<strong>撤銷沒有成功</strong>${esc(e2.message)}`, "error", false);
+        render();
+        return;
+      }
+      state.busy = false;
+      return;
+    }
   });
   $("view").addEventListener("input", e=>{
     if(e.target.id!=="custom-input") return;
