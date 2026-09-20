@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>七七共修計數</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+<style>
+:root{
+  --ground:#FFFFFF; --surface:#FFFFFF; --surface-2:#F4F0E6;
+  --ink:#2A2621; --ink-2:#665F51; --ink-3:#8C8471; --line:#E3DDCC;
+  --accent:#2E4A61; --on-accent:#FFFFFF; --accent-soft:#E2EAF0; --accent-line:#9CB6C8;
+  --gold:#8C6A1E; --gold-soft:#F4E8C8; --gold-bead:#C89A3C;
+  --ok:#2C6848; --ok-soft:#DCEEE2;
+  --warn:#9A3B2E;
+  --scrim:rgba(30,25,15,.5);
+  --shadow:0 10px 30px rgba(42,37,28,.14);
+  --serif:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#15120D; --surface:#1F1A12; --surface-2:#292217;
+    --ink:#F1EADC; --ink-2:#C3B9A4; --ink-3:#8F856E; --line:#3B301F;
+    --accent:#9CC1DE; --on-accent:#0E1F2A; --accent-soft:#213244; --accent-line:#3F607A;
+    --gold:#E1BE76; --gold-soft:#3B2E16; --gold-bead:#D6AD5B;
+    --ok:#8ECDA6; --ok-soft:#1C3325; --warn:#F2A08F;
+    --scrim:rgba(10,8,4,.7); --shadow:0 10px 30px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#15120D; --surface:#1F1A12; --surface-2:#292217;
+  --ink:#F1EADC; --ink-2:#C3B9A4; --ink-3:#8F856E; --line:#3B301F;
+  --accent:#9CC1DE; --on-accent:#0E1F2A; --accent-soft:#213244; --accent-line:#3F607A;
+  --gold:#E1BE76; --gold-soft:#3B2E16; --gold-bead:#D6AD5B;
+  --ok:#8ECDA6; --ok-soft:#1C3325; --warn:#F2A08F;
+  --scrim:rgba(10,8,4,.7); --shadow:0 10px 30px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.55;-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--serif);font-variant-numeric:tabular-nums;font-weight:700}
+
+.app{max-width:430px;margin:0 auto;padding-inline:16px;padding-block:12px 110px;display:flex;flex-direction:column;gap:16px}
+.app.has-bar{padding-bottom:190px}
+
+/* period header */
+.period{background:var(--accent);color:var(--on-accent);border-radius:20px;padding:18px 18px 16px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.period-eyebrow{font-size:15px;opacity:.85;letter-spacing:.08em}
+.period-main{font-family:var(--serif);font-weight:700;font-size:40px;line-height:1.15;margin-block:4px}
+.period-main small{font-size:22px;font-weight:600;opacity:.8}
+.period-sub{font-size:18px;font-weight:500}
+.period-dates{font-size:14px;opacity:.8;margin-top:6px}
+.beads{display:grid;grid-template-columns:auto repeat(7,12px);gap:5px;align-items:center}
+.beads .wk{font-size:11px;opacity:.75;padding-right:3px;font-family:var(--serif)}
+.bead{width:12px;height:12px;border-radius:50%;border:1.5px solid currentColor;opacity:.45}
+.bead.past{background:currentColor;opacity:.9}
+.bead.today{background:var(--gold-bead);border-color:var(--gold-bead);opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,var(--gold-bead) 35%,transparent)}
+
+/* totals */
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.total{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(42,37,28,.05)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .total{box-shadow:0 1px 3px rgba(0,0,0,.25)}}
+:root[data-theme="dark"] .total{box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.total-label{font-size:15px;color:var(--ink-2)}
+.total-value{font-size:34px;line-height:1.2;color:var(--ink)}
+.total-value .u{font-family:var(--sans);font-size:17px;font-weight:500;margin-left:4px;color:var(--ink-2)}
+.flash{animation:flash 1.2s ease}
+@keyframes flash{0%{background:var(--ok-soft);border-color:var(--ok)}100%{background:var(--surface)}}
+
+/* steps */
+.step{display:flex;flex-direction:column;gap:10px}
+.step h2{font-size:20px;font-weight:700;margin:0;display:flex;align-items:baseline;gap:8px}
+.step h2 .n{font-family:var(--serif);color:var(--accent);font-size:22px}
+.step h2 .hint{font-size:15px;font-weight:400;color:var(--ink-3)}
+.group-label{margin:2px 0 -2px;font-size:15px;color:var(--ink-3);letter-spacing:.1em}
+.items{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.items .item:last-child:nth-child(odd){grid-column:1/-1}
+.items.one{grid-template-columns:1fr}
+.item{min-height:64px;border-radius:14px;border:2px solid var(--line);background:var(--surface);font-size:22px;font-weight:700;font-family:var(--serif);letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
+.item.long{font-size:21px;letter-spacing:.04em;padding-inline:12px}
+.item[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.item[aria-pressed="true"]::before{content:"✓";font-family:var(--sans);font-size:18px}
+.counts{display:grid;gap:8px}
+.count{min-height:60px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-size:24px}
+.count.custom{font-family:var(--sans);font-size:18px;font-weight:700}
+.count[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.empty{background:var(--surface-2);border:2px dashed var(--line);border-radius:12px;padding:16px;color:var(--ink-3);text-align:center;font-size:17px}
+.custom-box{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+.custom-box label{font-size:16px;color:var(--ink-2)}
+.custom-row{display:flex;align-items:center;gap:10px}
+.custom-row input{flex:1;min-width:0;height:56px;border-radius:10px;border:2px solid var(--accent-line);background:var(--surface-2);padding:0 14px;font-size:26px;font-family:var(--serif);font-weight:700}
+.err{color:var(--warn);font-size:15px;min-height:1.3em}
+.tag{display:inline-block;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--ink-2);border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-right:6px;vertical-align:2px}
+
+/* record bar */
+.recordbar{position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:5;pointer-events:none}
+.recordbar-inner{max-width:430px;margin:0 auto;padding:10px 16px;pointer-events:auto;background:linear-gradient(to top,var(--ground) 70%,transparent)}
+.summary{font-size:16px;color:var(--ink-2);text-align:center;margin-bottom:6px;min-height:1.5em}
+.summary strong{color:var(--ink);font-size:18px}
+.btn-record{width:100%;min-height:62px;border:0;border-radius:16px;background:var(--accent);color:var(--on-accent);font-size:22px;font-weight:700;letter-spacing:.1em;box-shadow:var(--shadow)}
+.btn-record:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor:not-allowed}
+
+/* panels */
+.panel{display:flex;flex-direction:column;gap:16px}
+.panel h2.title{font-family:var(--serif);font-size:24px;margin:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 3px rgba(42,37,28,.05)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .card{box-shadow:0 1px 3px rgba(0,0,0,.25)}}
+:root[data-theme="dark"] .card{box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sec-head h3{margin:0;font-size:19px;font-weight:700}
+.sec-head .meta{font-size:15px;color:var(--ink-3)}
+.big{font-size:46px;line-height:1.1}
+.big .u{font-family:var(--sans);font-size:18px;font-weight:500;margin-left:4px;color:var(--ink-2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--accent-soft);border-radius:999px;padding:3px 12px;font-size:16px}
+.chip b{font-family:var(--serif);font-variant-numeric:tabular-nums}
+.sec-label{font-size:15px;color:var(--ink-3);letter-spacing:.08em;margin:0 0 -6px}
+.rows{list-style:none;margin:0;padding:0}
+.rows li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-top:1px solid var(--line);font-size:19px}
+.rows li:first-child{border-top:0}
+.sec .rows li{padding-inline:0}
+.rows .val{font-size:24px;white-space:nowrap}
+.rows .val .u{font-family:var(--sans);font-size:15px;font-weight:400;color:var(--ink-2);margin-left:3px}
+.rec-time{font-size:15px;color:var(--ink-3);display:block;font-variant-numeric:tabular-nums}
+.rec-name{font-weight:700}
+.rec-new{font-size:13px;font-weight:700;background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+.foot-note{font-size:14px;color:var(--ink-3);text-align:center;margin:0}
+
+/* practice calendar */
+.cal{display:grid;grid-template-columns:auto repeat(7,1fr);gap:5px;align-items:center}
+.cal .wk{font-family:var(--serif);font-size:13px;color:var(--ink-3);padding-right:2px}
+.day{aspect-ratio:1;max-width:100%;border-radius:10px;border:1.5px solid var(--line);background:var(--surface-2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:15px;line-height:1.1;padding:0;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.day small{font-size:10px;opacity:.8}
+.day.done{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+.day.future{border-style:dashed;background:transparent;color:var(--ink-3);opacity:.6}
+.day.today{box-shadow:0 0 0 3px var(--gold-bead)}
+.day[aria-pressed="true"]{outline:3px solid var(--ink);outline-offset:2px}
+button.day{cursor:pointer}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--line);background:var(--surface-2);display:inline-block}
+.legend i.d{background:var(--accent);border-color:var(--accent)}
+.legend i.t{box-shadow:0 0 0 2px var(--gold-bead)}
+.legend i.f{border-style:dashed;background:transparent}
+.day-detail{background:var(--surface-2);border-radius:12px;padding:12px 14px;font-size:16px}
+.day-detail strong{font-size:17px}
+
+/* tab bar */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs-inner{max-width:430px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tab{height:76px;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:17px;color:var(--ink-3);font-weight:500;position:relative}
+.tab svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-selected="true"]{color:var(--accent);font-weight:700}
+.tab[aria-selected="true"]::after{content:"";position:absolute;top:0;left:25%;right:25%;height:4px;border-radius:0 0 4px 4px;background:var(--accent)}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.dialog{width:100%;max-width:398px;background:var(--surface);border-radius:22px;padding:22px 20px 18px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow);text-align:center}
+.dialog h3{margin:0;font-size:20px;color:var(--ink-2);font-weight:500}
+.dialog .what{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1.35}
+.dialog .what .u{font-size:22px}
+.dialog .when{font-size:16px;color:var(--ink-3);margin-top:-6px}
+.dialog-actions{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.btn-sec,.btn-pri{min-height:60px;border-radius:14px;font-size:20px;font-weight:700}
+.btn-sec{background:var(--surface-2);border:2px solid var(--line)}
+.btn-pri{background:var(--accent);color:var(--on-accent);border:0}
+
+/* toast */
+.toast{position:fixed;left:0;right:0;bottom:calc(172px + env(safe-area-inset-bottom,0px));z-index:10;pointer-events:none;padding-inline:16px}
+.toast.low{bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+.toast-inner{max-width:398px;margin:0 auto;background:var(--ok-soft);color:var(--ink);border:2px solid var(--ok);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:10px;pointer-events:auto;box-shadow:var(--shadow);animation:rise .25s ease-out}
+.toast.undone .toast-inner{background:var(--surface);border-color:var(--line)}
+.toast-msg{flex:1;font-size:17px;line-height:1.4}
+.toast-msg strong{display:block;color:var(--ok);font-size:18px}
+.toast.undone .toast-msg strong{color:var(--ink-2)}
+.btn-undo{flex:none;min-height:50px;padding:0 12px;border-radius:12px;border:2px solid var(--ok);background:var(--surface);color:var(--ok);font-size:16px;font-weight:700}
+@keyframes rise{from{transform:translateY(12px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="period" id="period"></header>
+  <main id="view"></main>
+</div>
+
+<div class="recordbar" id="recordbar" hidden>
+  <div class="recordbar-inner">
+    <div class="summary" id="summary" aria-live="polite"></div>
+    <button type="button" class="btn-record" id="btn-record" disabled>記錄本次誦念</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite">
+  <div class="toast-inner">
+    <div class="toast-msg" id="toast-msg"></div>
+    <button type="button" class="btn-undo" id="btn-undo">撤銷剛剛紀錄</button>
+  </div>
+</div>
+
+<nav class="tabs" aria-label="主選單">
+  <div class="tabs-inner" role="tablist">
+    <button type="button" class="tab" id="tab-record" role="tab" data-tab="record" aria-selected="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>紀錄功課
+    </button>
+    <button type="button" class="tab" id="tab-merit" role="tab" data-tab="merit" aria-selected="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="m8.5 14.5 2.5 2.5 4.5-4.5"/></svg>累計功德
+    </button>
+    <button type="button" class="tab" id="tab-mine" role="tab" data-tab="mine" aria-selected="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>我的紀錄
+    </button>
+  </div>
+</nav>
+
+<div class="scrim" id="modal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+    <h3 id="dlg-title">確認要記錄這一次嗎？</h3>
+    <div class="what" id="dlg-what"></div>
+    <div class="when" id="dlg-when"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn-sec" id="dlg-cancel">返回修改</button>
+      <button type="button" class="btn-pri" id="dlg-ok">確認記錄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const AMITA = "南無阿彌陀佛", GUANYIN = "南無大慈大悲觀世音菩薩", DIZANG = "南無大願地藏王菩薩";
+  const SUTRAS = ["大悲咒","往生咒","無常經","十小咒","金剛經","心經","甘露水真言"];
+  const BUDDHAS = [AMITA, GUANYIN, DIZANG];
+  const ITEMS = SUTRAS.concat(BUDDHAS);
+  const label = i => BUDDHAS.includes(i) ? `<small class="tag">佛號</small>${i}` : i;
+
+  const HOUR = 3600e3, DAY = 86400e3, TP = 8*HOUR;
+  const tp = (m,d,h,mi) => Date.UTC(2026,m-1,d,h-8,mi);          // 台北時間 → timestamp
+  const START = tp(9,18,4,44);                                   // 起：2026/9/18 04:44
+  const TOTAL_DAYS = 49;                                         // 迄：2026/11/5 23:59:59
+  const WEEK = "日一二三四五六";
+  const WEEKS = ["一七","二七","三七","四七","五七","六七","七七"];
+  const FAKE_NOW = tp(9,19,20,15);                               // 原型固定為第 2 天晚上
+  const loadedAt = Date.now();
+
+  // 我的 11 筆假資料（合計 128 遍）
+  const seedMine = [
+    [tp(9,18,5,2),"大悲咒",3],[tp(9,18,7,30),"往生咒",108],[tp(9,18,12,15),"金剛經",1],
+    [tp(9,18,21,40),"心經",1],[tp(9,19,5,10),"大悲咒",3],[tp(9,19,6,5),"十小咒",1],
+    [tp(9,19,9,20),"甘露水真言",3],[tp(9,19,13,45),"無常經",1],[tp(9,19,17,30),"心經",3],
+    [tp(9,19,19,5),"心經",3],[tp(9,19,19,50),"大悲咒",1]
+  ].map(([t,item,n],i)=>({id:"s"+i,t,item,n}));
+  // 其他家人合計（假資料，加上我的 = 2456）
+  const familyOthers = {"大悲咒":240,"往生咒":864,"無常經":30,"十小咒":60,"金剛經":22,"心經":90,"甘露水真言":42,
+    [AMITA]:540,[GUANYIN]:324,[DIZANG]:116};
+
+  const state = {
+    tab:"record",
+    item:null, count:null, custom:false, customText:"",
+    records: seedMine.slice(),
+    last:null, newIds:new Set(), selDay:null
+  };
+  let toastTimer = null, lastFocus = null;
+
+  const $ = id => document.getElementById(id);
+  const fmt = n => n.toLocaleString("zh-TW");
+  const now = () => FAKE_NOW + (Date.now() - loadedAt);
+  const dayIndex = t => Math.floor((t+TP)/DAY);
+  const dayNo = t => dayIndex(t) - dayIndex(START) + 1;            // 第幾天（台北日曆日）
+  const dateOfDay = n => (dayIndex(START)+n-1)*DAY;               // 該天 00:00（台北，已位移）
+  function fmtTime(t, withTime=true){
+    const d = new Date(t+TP);
+    const s = `${d.getUTCMonth()+1}/${d.getUTCDate()}（${WEEK[d.getUTCDay()]}）`;
+    return withTime ? s+` ${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")}` : s;
+  }
+  function fmtDayOnly(n){
+    const d = new Date(dateOfDay(n));
+    return `${d.getUTCMonth()+1}/${d.getUTCDate()}（${WEEK[d.getUTCDay()]}）`;
+  }
+  const isBuddha = () => BUDDHAS.includes(state.item);
+  const presetsFor = i => BUDDHAS.includes(i) ? [108,500,1000] : i==="往生咒" ? [108] : [1,3,7,10];
+  const presets = () => presetsFor(state.item);
+  const maxCount = () => isBuddha() ? 100000 : 9999;
+
+  const zero = () => { const z={}; ITEMS.forEach(i=>z[i]=0); return z; };
+  const sum = o => ITEMS.reduce((a,i)=>a+o[i],0);
+  function byItem(list){ const o=zero(); list.forEach(r=>o[r.item]+=r.n); return o; }
+  function totals(){
+    const mine = byItem(state.records);
+    const family={}; ITEMS.forEach(i=>family[i]=familyOthers[i]+mine[i]);
+    return {mine,family};
+  }
+  function recordsOnDay(n){ return state.records.filter(r=>dayNo(r.t)===n); }
+
+  function validCount(){
+    if(!state.custom) return state.count;
+    const t = state.customText.trim();
+    if(!/^\d+$/.test(t)) return null;
+    const n = parseInt(t,10);
+    return (n>=1 && n<=maxCount()) ? n : null;
+  }
+
+  /* ---------- period header ---------- */
+  function renderPeriod(){
+    const el = $("period"), day = dayNo(now());
+    let beads = "";
+    for(let w=0; w<7; w++){
+      beads += `<span class="wk">${WEEKS[w]}</span>`;
+      for(let d=0; d<7; d++){
+        const n = w*7+d+1;
+        beads += `<span class="bead${n<day?" past":n===day?" today":""}"></span>`;
+      }
+    }
+    el.innerHTML = `<div><div class="period-eyebrow">家族四十九日共修</div>
+      <div class="period-main">第 ${day} <small>/ ${TOTAL_DAYS} 天</small></div>
+      <div class="period-sub">距圓滿還有 ${TOTAL_DAYS-day} 天</div>
+      <div class="period-dates">2026/9/18（五）04:44 起 ‧ 11/5（四）圓滿</div></div>
+      <div class="beads" aria-hidden="true">${beads}</div>`;
+    el.setAttribute("aria-label",`共修第 ${day} 天，共 ${TOTAL_DAYS} 天，距圓滿還有 ${TOTAL_DAYS-day} 天`);
+  }
+
+  /* ---------- 紀錄功課 ---------- */
+  function itemBtn(i, extra=""){
+    return `<button type="button" class="item ${extra}" id="item-${ITEMS.indexOf(i)}" data-item="${i}" aria-pressed="${state.item===i}">${i}</button>`;
+  }
+  function renderRecord(){
+    const t = totals();
+    $("view").innerHTML = `<div class="totals">
+        <div class="total" id="tot-mine"><div class="total-label">我的本期累積</div>
+          <div class="total-value num">${fmt(sum(t.mine))}<span class="u">遍</span></div></div>
+        <div class="total" id="tot-family"><div class="total-label">家族本期累積</div>
+          <div class="total-value num">${fmt(sum(t.family))}<span class="u">遍</span></div></div>
+      </div>
+      <section class="step" aria-labelledby="h-item">
+        <h2 id="h-item"><span class="n">1</span>選擇剛剛唸的項目</h2>
+        <p class="group-label">經咒</p>
+        <div class="items">${SUTRAS.map(i=>itemBtn(i)).join("")}</div>
+        <p class="group-label">佛號</p>
+        <div class="items one">${BUDDHAS.map(i=>itemBtn(i,"long")).join("")}</div>
+      </section>
+      <section class="step" aria-labelledby="h-count">
+        <h2 id="h-count"><span class="n">2</span>選擇遍數${isBuddha()?'<span class="hint">佛號常用數量</span>':state.item==="往生咒"?'<span class="hint">已預選 108 遍</span>':''}</h2>
+        ${countsHTML()}
+      </section>`;
+  }
+  function countsHTML(){
+    if(!state.item) return `<div class="empty">請先選擇上面的項目</div>`;
+    const p = presets();
+    let h = `<div class="counts" style="grid-template-columns:repeat(${p.length+1},1fr)">` +
+      p.map(n=>`<button type="button" class="count num" id="count-${n}" data-count="${n}" aria-pressed="${!state.custom && state.count===n}">${fmt(n)}</button>`).join("") +
+      `<button type="button" class="count custom" id="count-custom" data-count="custom" aria-pressed="${state.custom}">自訂</button></div>`;
+    if(state.custom){
+      const bad = state.customText.trim()!=="" && validCount()===null;
+      h += `<div class="custom-box">
+        <label for="custom-input">請輸入遍數（1 – ${fmt(maxCount())}）</label>
+        <div class="custom-row"><input id="custom-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${state.customText}" placeholder="例如 21"><span>遍</span></div>
+        <div class="err" id="custom-err">${bad?`請輸入 1 到 ${fmt(maxCount())} 之間的整數`:""}</div></div>`;
+    }
+    return h;
+  }
+
+  /* ---------- 累計功德 ---------- */
+  function chipsHTML(o){
+    const list = ITEMS.filter(i=>o[i]>0);
+    return list.length ? `<div class="chips">${list.map(i=>`<span class="chip">${i} <b>${fmt(o[i])}</b></span>`).join("")}</div>` : "";
+  }
+  function renderMerit(){
+    const t = totals(), today = dayNo(now());
+    const todayRecs = recordsOnDay(today), todayBy = byItem(todayRecs);
+    const doneDays = new Set(state.records.map(r=>dayNo(r.t)));
+    if(state.selDay===null) state.selDay = today;
+
+    let cal = "";
+    for(let w=0; w<7; w++){
+      cal += `<span class="wk">${WEEKS[w]}</span>`;
+      for(let d=0; d<7; d++){
+        const n = w*7+d+1, dt = new Date(dateOfDay(n));
+        const md = dt.getUTCDate()===1 || n===1 ? `${dt.getUTCMonth()+1}/${dt.getUTCDate()}` : dt.getUTCDate();
+        const cls = ["day"]; if(doneDays.has(n)) cls.push("done"); if(n>today) cls.push("future"); if(n===today) cls.push("today");
+        const status = n>today ? "尚未到" : doneDays.has(n) ? "有做功課" : "沒有紀錄";
+        const aria = `第 ${n} 天 ${fmtDayOnly(n)}，${status}${n===today?"，今天":""}`;
+        cal += n>today
+          ? `<span class="${cls.join(" ")}" aria-label="${aria}">${md}</span>`
+          : `<button type="button" class="${cls.join(" ")}" id="day-${n}" data-day="${n}" aria-pressed="${state.selDay===n}" aria-label="${aria}">${md}</button>`;
+      }
+    }
+    const pastDays = today, hit = [...doneDays].filter(n=>n<=today).length;
+    const sel = state.selDay, selRecs = recordsOnDay(sel), selBy = byItem(selRecs);
+    const detail = selRecs.length
+      ? `<strong>第 ${sel} 天 ${fmtDayOnly(sel)}　共 ${fmt(sum(selBy))} 遍</strong>${chipsHTML(selBy)}`
+      : `<strong>第 ${sel} 天 ${fmtDayOnly(sel)}</strong><div>這天沒有紀錄。</div>`;
+
+    $("view").innerHTML = `<section class="panel">
+      <h2 class="title">累計功德</h2>
+
+      <div class="card sec" id="tot-today">
+        <div class="sec-head"><h3>我的今日累計</h3><span class="meta">${fmtDayOnly(today)}　第 ${today} 天</span></div>
+        <div class="big num">${fmt(sum(todayBy))}<span class="u">遍</span></div>
+        ${chipsHTML(todayBy) || '<div class="meta">今天還沒有紀錄</div>'}
+      </div>
+
+      <div class="card sec" id="tot-mine">
+        <div class="sec-head"><h3>我的截至目前累計</h3><span class="meta">已做功課 ${hit} / ${pastDays} 天</span></div>
+        <div class="big num">${fmt(sum(t.mine))}<span class="u">遍</span></div>
+        <div class="cal">${cal}</div>
+        <div class="legend"><span><i class="d"></i>有做功課</span><span><i></i>沒有紀錄</span><span><i class="t"></i>今天</span><span><i class="f"></i>尚未到</span></div>
+        <div class="day-detail" aria-live="polite">${detail}</div>
+      </div>
+
+      <div class="card sec" id="tot-family">
+        <div class="sec-head"><h3>家族累計</h3><span class="meta">全家合計，不列個人</span></div>
+        <div class="big num">${fmt(sum(t.family))}<span class="u">遍</span></div>
+        <ul class="rows">${ITEMS.map(i=>`<li><span>${label(i)}</span><span class="val num">${fmt(t.family[i])}<span class="u">遍</span></span></li>`).join("")}</ul>
+      </div>
+    </section>`;
+  }
+
+  /* ---------- 我的紀錄 ---------- */
+  function renderMine(){
+    const t = totals();
+    const all = state.records.slice().sort((a,b)=>b.t-a.t), recent = all.slice(0,10);
+    $("view").innerHTML = `<section class="panel">
+      <h2 class="title">我的紀錄</h2>
+      <p class="sec-label">最近 10 筆</p>
+      <ul class="rows card">${recent.map(r=>`<li><div><span class="rec-name">${label(r.item)}</span>${state.newIds.has(r.id)?'<span class="rec-new">剛剛</span>':""}
+        <span class="rec-time">${fmtTime(r.t)}</span></div>
+        <div class="val num">${fmt(r.n)}<span class="u">遍</span></div></li>`).join("")}</ul>
+      ${all.length>10 ? `<p class="foot-note">本期共 ${all.length} 筆，這裡顯示最近 10 筆</p>`:""}
+      <p class="sec-label">依項目累計</p>
+      <ul class="rows card">${ITEMS.map(i=>`<li><span>${label(i)}</span><span class="val num">${fmt(t.mine[i])}<span class="u">遍</span></span></li>`).join("")}</ul>
+    </section>`;
+  }
+
+  function renderBar(){
+    const show = state.tab==="record";
+    $("recordbar").hidden = !show;
+    $("app").classList.toggle("has-bar", show);
+    $("toast").classList.toggle("low", !show);
+    if(!show) return;
+    const n = validCount(), ready = state.item && n;
+    $("btn-record").disabled = !ready;
+    $("summary").innerHTML = ready ? `本次：<strong>${state.item} ${fmt(n)} 遍</strong>`
+      : !state.item ? "請選擇項目與遍數" : "請選擇遍數";
+  }
+
+  function render(){
+    renderPeriod();
+    if(state.tab==="record") renderRecord();
+    else if(state.tab==="merit") renderMerit();
+    else renderMine();
+    renderBar();
+    document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===state.tab));
+  }
+
+  /* ---------- events ---------- */
+  $("view").addEventListener("click", e=>{
+    const it = e.target.closest(".item");
+    if(it){
+      const before = presets().join();
+      state.item = it.dataset.item;
+      if(before !== presets().join()){ state.count=null; state.custom=false; state.customText=""; }
+      if(state.item==="往生咒" && !state.custom) state.count = 108;
+      render(); $(it.id).focus(); return;
+    }
+    const c = e.target.closest(".count");
+    if(c){
+      if(c.dataset.count==="custom"){ state.custom=true; state.count=null; render(); $("custom-input").focus(); }
+      else { state.custom=false; state.count=+c.dataset.count; render(); $(c.id).focus(); }
+      return;
+    }
+    const d = e.target.closest("button.day");
+    if(d){ state.selDay = +d.dataset.day; render(); $(d.id).focus(); }
+  });
+  $("view").addEventListener("input", e=>{
+    if(e.target.id!=="custom-input") return;
+    e.target.value = e.target.value.replace(/[^\d]/g,"");
+    state.customText = e.target.value;
+    const bad = state.customText!=="" && validCount()===null;
+    $("custom-err").textContent = bad ? `請輸入 1 到 ${fmt(maxCount())} 之間的整數` : "";
+    renderBar();
+  });
+
+  document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
+    state.tab=b.dataset.tab; state.selDay=null;
+    if(state.tab!=="mine") state.newIds.clear();
+    render(); window.scrollTo(0,0);
+  }));
+
+  // confirm dialog
+  $("btn-record").addEventListener("click",()=>{
+    const n = validCount(); if(!state.item || !n) return;
+    $("dlg-what").innerHTML = `${state.item}<br><span class="num">${fmt(n)}</span><span class="u"> 遍</span>`;
+    $("dlg-when").textContent = "記錄時間 " + fmtTime(now());
+    lastFocus = document.activeElement;
+    $("modal").hidden = false; $("dlg-ok").focus();
+  });
+  function closeModal(){ $("modal").hidden = true; lastFocus && lastFocus.focus(); }
+  $("dlg-cancel").addEventListener("click", closeModal);
+  $("modal").addEventListener("click", e=>{ if(e.target.id==="modal") closeModal(); });
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("modal").hidden) closeModal(); });
+
+  $("dlg-ok").addEventListener("click", ()=>{
+    const rec = { id:"n"+Date.now(), t:now(), item:state.item, n:validCount() };
+    state.records.push(rec);
+    state.last = rec; state.newIds.add(rec.id);
+    state.item=null; state.count=null; state.custom=false; state.customText="";
+    $("modal").hidden = true;
+    render(); flashTotals();
+    showToast(`<strong>已記錄 ✓</strong>${rec.item} ${fmt(rec.n)} 遍，功德已加入累積`, true);
+    $("btn-record").focus();
+  });
+
+  $("btn-undo").addEventListener("click", ()=>{
+    if(!state.last) return;
+    const r = state.last;
+    state.records = state.records.filter(x=>x.id!==r.id);
+    state.newIds.delete(r.id); state.last=null;
+    render(); flashTotals();
+    showToast(`<strong>已撤銷</strong>剛剛的「${r.item} ${fmt(r.n)} 遍」已取消`, false);
+  });
+
+  function flashTotals(){
+    ["tot-mine","tot-family","tot-today"].forEach(id=>{ const el=$(id); if(!el) return; el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); });
+  }
+  function showToast(msg, canUndo){
+    $("toast-msg").innerHTML = msg;
+    $("btn-undo").hidden = !canUndo;
+    $("toast").classList.toggle("undone", !canUndo);
+    $("toast").hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, canUndo ? 12000 : 4000);
+  }
+  function hideToast(){ $("toast").hidden = true; clearTimeout(toastTimer); }
+
+  render();
+})();
+</script>
+</body>
+</html>
