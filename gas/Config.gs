@@ -11,7 +11,7 @@
  */
 
 // 項目清單需與前端 web/index.html 相同
-const SUTRAS = ['大悲咒', '往生咒', '無常經', '十小咒', '金剛經', '心經', '甘露水真言'];
+const SUTRAS = ['大悲咒', '往生咒', '無常經', '十小咒', '金剛經', '心經', '甘露水真言', '佛說阿彌陀經', '普門品', '藥師經', '藥師咒'];
 const BUDDHAS = ['南無阿彌陀佛', '南無大慈大悲觀世音菩薩', '南無大願地藏王菩薩'];
 const ITEMS = SUTRAS.concat(BUDDHAS);
 const MAX_COUNT_SUTRA = 9999;
