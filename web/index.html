@@ -183,15 +183,14 @@ button.day{cursor:pointer}
 .btn-pri{background:var(--accent);color:var(--on-accent);border:0}
 
 /* toast */
-.toast{position:fixed;left:0;right:0;bottom:calc(172px + env(safe-area-inset-bottom,0px));z-index:10;pointer-events:none;padding-inline:16px}
-.toast.low{bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+.toast{position:fixed;left:0;right:0;top:calc(12px + env(safe-area-inset-top,0px));z-index:10;pointer-events:none;padding-inline:16px}
 .toast-inner{max-width:398px;margin:0 auto;background:var(--ok-soft);color:var(--ink);border:2px solid var(--ok);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:10px;pointer-events:auto;box-shadow:var(--shadow);animation:rise .25s ease-out}
 .toast.undone .toast-inner{background:var(--surface);border-color:var(--line)}
 .toast-msg{flex:1;font-size:17px;line-height:1.4}
 .toast-msg strong{display:block;color:var(--ok);font-size:18px}
 .toast.undone .toast-msg strong{color:var(--ink-2)}
 .btn-undo{flex:none;min-height:50px;padding:0 12px;border-radius:12px;border:2px solid var(--ok);background:var(--surface);color:var(--ok);font-size:16px;font-weight:700}
-@keyframes rise{from{transform:translateY(12px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes rise{from{transform:translateY(-12px);opacity:.4}to{transform:none;opacity:1}}
 .toast.error .toast-inner{background:var(--surface);border-color:var(--warn)}
 .toast.error .toast-msg strong{color:var(--warn)}
 .btn-pri:disabled,.btn-sec:disabled,.btn-undo:disabled{opacity:.6;cursor:progress}
@@ -588,7 +587,6 @@ button.day{cursor:pointer}
     const show = state.tab==="record";
     $("recordbar").hidden = !show;
     $("app").classList.toggle("has-bar", show);
-    $("toast").classList.toggle("low", !show);
     if(!show) return;
     const open = inPeriod(), n = validCount(), ready = open && state.item && n;
     $("btn-record").disabled = !ready;
